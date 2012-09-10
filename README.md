@@ -1,4 +1,0 @@
-TorE
-====
-
-Tornado Enhanced Package
