@@ -111,7 +111,7 @@ class Template(tornado.template.Template):
 def authenticated(method):
     """
     HTTP基本身份认证修饰符，修改自tornado.web的同名方法
-    修饰get、post等方法
+    当前获取基本身份用户名和口令的代码放置在该修饰符中，所以如果不使用该修饰符修饰，就获取不到用户名
     """
 
     @functools.wraps(method)
@@ -188,7 +188,7 @@ class TemplateHandler(RequestHandler):
         self.get(*args, **kwargs)
 
 
-class JsonHandler(RequestHandler):
+class JsonHandler(tornado.web.RequestHandler):
     """
     Json处理器，一般用于RESTful WebService
     RequestHandler的write只支持把字典类型的值输出为Json格式，建议不用
@@ -220,7 +220,7 @@ class JsonHandler(RequestHandler):
 
     def get_params_as_dict(self):
         """
-        获取字典包装的查询字幅串请求参数列表
+        获取字典包装的查询字符串请求参数列表
         """
         ret = {}
         for k in list(self.request.arguments.keys()):
@@ -259,7 +259,7 @@ class Application(tornado.web.Application):
     结合全局设置中的“root_dir”自动设置模板和静态目录
     """
 
-    def __init__(self, handlers, **settings):
+    def __init__(self, **settings):
         # 网站根目录，默认为当前目录
         root_dir = settings.get('root_dir')
         if not root_dir:
@@ -280,8 +280,10 @@ class Application(tornado.web.Application):
             # 消息服务的WebSocket接口
             ('/messaging', tore.messaging.WebSocketHandler)
         ]
+        handlers = default_settings.get('handlers')
         if handlers:
             default_handlers += handlers
+            del default_settings['handlers']
         tornado.web.Application.__init__(self, default_handlers, **default_settings)
 
     def log_request(self, handler):
@@ -299,10 +301,10 @@ _unauthenticated_html = r'''
 <html>
 <head>
     <meta charset="utf-8">
-    <title>认证失败</title>
+    <title>Unauthenticated</title>
     <style>
         body {
-            background-color: #729fcf;
+            background-color: #555753;
         }
 
         article {
@@ -310,7 +312,8 @@ _unauthenticated_html = r'''
             margin: 160px auto 0 auto;
             padding: 20px;
             background-color: #fff;
-            border: 1px solid #204a87;
+            border: 1px solid #2e3436;
+            box-shadow: 0 15px 31px rgba(0, 0, 0, 0.5);
             text-align: center;
         }
 
@@ -342,10 +345,10 @@ _unauthenticated_html = r'''
 </head>
 <body>
 <article>
-    <h1>请输入正确的用户名和密码</h1>
+    <h1>Username and password required.</h1>
 
     <p>
-        <button onclick="javascript:location.reload()">重试</button>
+        <button onclick="javascript:location.reload()">Retry</button>
     </p>
 </article>
 </body>
@@ -356,10 +359,10 @@ _unauthorized_html = r'''
 <!DOCTYPE html>
 <html>
 <head>
-    <title>鉴权失败</title>
+    <title>Unauthorized</title>
     <style>
         body {
-            background-color: #729fcf;
+            background-color: #555753;
         }
 
         article {
@@ -367,7 +370,8 @@ _unauthorized_html = r'''
             margin: 160px auto 0 auto;
             padding: 20px;
             background-color: #fff;
-            border: 1px solid #204a87;
+            border: 1px solid #2e3436;
+            box-shadow: 0 15px 31px rgba(0, 0, 0, 0.5);
             text-align: center;
         }
 
@@ -399,11 +403,11 @@ _unauthorized_html = r'''
 </head>
 <body>
 <article>
-    <h1>您没有权限访问当前页面</h1>
+    <h1>You don't have permission to visit this page.</h1>
 
     <p>
-        <button onclick="javascript:location.reload()">重试</button>
-        <button onclick="javascript:history.back()">返回</button>
+        <button onclick="javascript:location.reload()">Retry</button>
+        <button onclick="javascript:history.back()">Back</button>
     </p>
 </article>
 </body>
