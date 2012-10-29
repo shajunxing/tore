@@ -2,32 +2,16 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Sample Page</title>
+    <title>Examples</title>
     <link rel="icon" href="logo.png">
-    <link rel="stylesheet" href="index.css">
-    <script src="jquery.js"></script>
-    <script src="jquery.messaging.js"></script>
-    <script src="index.js"></script>
 </head>
 <body>
-<h1>Values from template</h1>
 
-<p>Username: {{ current_user }}</p>
+<p><a href="ex1.t">Example 1 - Simplest example</a></p>
 
-<p>Platform: {{ get_platform() }}</p>
+<p><a href="ex2.t">Example 2 - Templates, ajax and messaging example</a></p>
 
-<p>Processor: {{ platform.processor() }}</p>
+<p><a href="ex3.t">Example 3 - Template inheritance example</a></p>
 
-<h1>Values from Ajax</h1>
-
-<p>Username: <span id="username"></span></p>
-
-<p>Platform: <span id="platform"></span></p>
-
-<p>Processor: <span id="processor"></span></p>
-
-<h1>Values from message</h1>
-
-<p>Time: <span id="time"></span></p>
 </body>
 </html>
