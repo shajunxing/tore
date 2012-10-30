@@ -197,17 +197,17 @@ import uuid
 
 class Exchange():
     """
-    消息交换器
-    封装Pub/Sub核心算法
+    The message exchanger, contains core algorithm of pub/sub messaging model
     """
 
     def __init__(self):
-        # 消息接收者字典，结构为：
+        # receivers dictionary, which structure is:
+        #
         # {
-        #     目的地正则表达式: {
-        #         'compiled': 已编译的正则表达式;
+        #     <destination regex>: {
+        #         'compiled': <compiled regular expression>,
         #         'callbacks': {
-        #             uuid: 回调函数;
+        #             uuid: <callback function>,
         #             ...
         #         }
         #     };
@@ -222,9 +222,9 @@ class Exchange():
 
     def add(self, destination_regex, callback):
         """
-        增加一个正则表达式和回调函数
-        所有匹配该正则表达式的消息将发送给回调函数
-        返回标识该回调函数的ID（删除时候用）
+        add a destination regex and corresponding callback
+        all the messages matched destination will trigger the callback
+        return an identification for callback removal
         """
         id = str(uuid.uuid1())
         if destination_regex in self.__receivers:
@@ -241,8 +241,11 @@ class Exchange():
         return id
 
     def remove(self, id):
-        # 如果某一个destinationRegex下面已经没有callback了，那么删除该destinationRegex条目
-        # removeList为待删除的列表
+        """
+        remove a callback by it's identification
+        """
+        # if no callbacks in one destination regex, it will be removed to save memory
+        # removeList is a list for removal
         removeList = list()
         for destination_regex in self.__receivers:
             callbacks = self.__receivers[destination_regex]['callbacks']
@@ -255,7 +258,7 @@ class Exchange():
 
     def push(self, message, destination):
         """
-        发送一则消息，所有匹配目的地的回调函数将被调用
+        push a message to queue
         """
         item = {
             'message': message,
@@ -266,7 +269,8 @@ class Exchange():
 
     def __push_consumer(self):
         """
-        消息队列接收线程
+        message queue consumer thread
+        all the destination matched callbacks will be triggered
         """
         while True:
             item = self.__message_queue.get()
@@ -287,7 +291,7 @@ class Exchange():
 
     def print_receivers(self):
         """
-        打印所有接收者，测试用
+        print all receivers, for test purpose
         """
         for destination_regex in self.__receivers:
             print('"%s" {' % destination_regex)
@@ -297,12 +301,12 @@ class Exchange():
             print('}')
         print()
 
-# 全局唯一的交换器
+# global message exchange
 exchange = Exchange()
 
 def message_frame(content, match):
     """
-    消息帧
+    message frame
     """
     return json.dumps({
         'type': 'message',
@@ -313,7 +317,7 @@ def message_frame(content, match):
 
 def error_frame(content):
     """
-    错误帧
+    error frame
     """
     return json.dumps({
         'type': 'error',
@@ -323,7 +327,7 @@ def error_frame(content):
 
 def publish_frame(content, destination):
     """
-    发布帧
+    message publish frame
     """
     return json.dumps({
         'type': 'publish',
@@ -334,7 +338,7 @@ def publish_frame(content, destination):
 
 def subscribe_frame(destination):
     """
-    订阅帧
+    message subscribe frame
     """
     return json.dumps({
         'type': 'subscribe',
@@ -344,7 +348,7 @@ def subscribe_frame(destination):
 
 def unsubscribe_frame(destination):
     """
-    取消订阅帧
+    message unsubscribe frame
     """
     return json.dumps({
         'type': 'unsubscribe',
@@ -354,13 +358,12 @@ def unsubscribe_frame(destination):
 
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
     """
-    Json Messaging的WebSocket实现
+    WebSocket implementation
     """
 
     def open(self):
         self.__address = self.request.connection.address
         logging.info('%s connected', self.__address)
-        # 订阅列表
         self.__subscriptions = dict()
 
     def on_message(self, message):
@@ -370,13 +373,11 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             type = parsed['type']
             destination = parsed['destination']
             if type == 'publish':
-            # 发布帧
             #                content = parsed['content']
             #                exchange.push(content, destination)
                 # 此处为了安全起见，禁用发布功能，如果需要发布消息，可以走REST接口
                 raise Exception('Publish is not allowed on WebSocket')
             elif type == 'subscribe':
-                # 订阅帧
                 if destination in self.__subscriptions:
                     raise Exception('Destination "%s" already exists' % destination)
                 else:
@@ -384,7 +385,6 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
                     self.__subscriptions[destination] = id
                     logging.info('%s subscribes "%s"', self.__address, destination)
             elif type == 'unsubscribe':
-                # 取消订阅帧
                 if destination not in self.__subscriptions:
                     raise Exception('Destination "%s" not exists' % destination)
                 else:
@@ -395,7 +395,6 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
                 raise Exception('Unknown message type "%s"', type)
         except Exception as ex:
             logging.warning(ex)
-            # 所有异常统一发回客户端
             self.write_message(error_frame(str(ex)))
 
     def on_close(self):
@@ -407,21 +406,20 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     def callback(self, content, match):
         """
-        消息回调函数
+        message callback
         """
         self.write_message(message_frame(content, match))
 
 
 class TCPConnection():
     """
-    Json Messaging的TCP单条连接处理
+    TCP connection handler
     """
 
     def __init__(self, stream, address):
         self.__stream = stream
         self.__address = address
         logging.info('%s connected', self.__address)
-        # 订阅列表
         self.__subscriptions = dict()
         self.__stream.set_close_callback(self.__on_close)
         self.__message_callback = tornado.stack_context.wrap(self.__on_message)
@@ -429,21 +427,19 @@ class TCPConnection():
 
     def __on_message(self, message):
         """
-        处理客户端发来的消息帧
+        handle client frames
         """
         try:
-            # 注意要去掉末尾的'\0'
+            # Notice to remove tailed '\0'
             msg = message[:-1].decode()
             logging.debug(msg)
             parsed = json.loads(msg)
             type = parsed['type']
             destination = parsed['destination']
             if type == 'publish':
-                # 发布帧
                 content = parsed['content']
                 exchange.push(content, destination)
             elif type == 'subscribe':
-                # 订阅帧
                 if destination in self.__subscriptions:
                     raise Exception('Destination "%s" already exists' % destination)
                 else:
@@ -451,7 +447,6 @@ class TCPConnection():
                     self.__subscriptions[destination] = id
                     logging.info('%s subscribes "%s"', self.__address, destination)
             elif type == 'unsubscribe':
-                # 取消订阅帧
                 if destination not in self.__subscriptions:
                     raise Exception('Destination "%s" not exists' % destination)
                 else:
@@ -462,7 +457,6 @@ class TCPConnection():
                 raise Exception('Unknown message type "%s"', type)
         except Exception as ex:
             logging.warning(ex)
-            # 所有异常统一发回客户端
             if not self.__stream.closed():
                 self.__stream.write(error_frame(str(ex)).encode() + b'\0')
 
@@ -471,7 +465,7 @@ class TCPConnection():
 
     def __on_close(self):
         """
-        处理Socket关闭事件
+        handle socket close event
         """
         logging.info('%s disconnected, all subscription from which will be cleaned', self.__address)
         for destination in self.__subscriptions:
@@ -481,7 +475,7 @@ class TCPConnection():
 
     def __callback(self, content, match):
         """
-        消息回调函数
+        message callback
         """
         if not self.__stream.closed():
             self.__stream.write(message_frame(content, match).encode() + b'\0')
@@ -489,7 +483,7 @@ class TCPConnection():
 
 class TCPServer(tornado.netutil.TCPServer):
     """
-    Json Messaging的TCP服务器
+    TCP implementation
     """
 
     def handle_stream(self, stream, address):
@@ -498,7 +492,7 @@ class TCPServer(tornado.netutil.TCPServer):
 
 class UDPServer():
     """
-    Json Messaging的UDP服务器
+    UDP implementation
     """
 
     def __init__(self):
@@ -520,7 +514,6 @@ class UDPServer():
             type = parsed['type']
             destination = parsed['destination']
             if type == 'publish':
-                # UDP只处理发布帧
                 content = parsed['content']
                 exchange.push(content, destination)
         except Exception as ex:
@@ -529,24 +522,19 @@ class UDPServer():
 
 class UDPClient():
     """
-    UDP客户端，只支持消息发布
+    UDP client, only message publishing is supported
     """
 
     def __init__(self, host='localhost', port=8154):
         """
-        host: 消息服务器地址
-        port: 消息服务器端口
+        host: message server address
+        port: message server port
         """
-        # 客户端套接字
+        # client socket
         self.__socket = socket.socket(type=socket.SOCK_DGRAM)
         self.__socket.connect((host, port))
 
     def publish(self, content, destination):
-        """
-        发布一则消息
-        content: 消息内容，类型Python对象
-        destination: 消息目的地字符串
-        """
         try:
             self.__socket.send(publish_frame(content, destination).encode())
         except Exception as ex:
@@ -554,7 +542,7 @@ class UDPClient():
 
     def close(self):
         """
-        关闭所有资源
+        close all resources
         """
         try:
             self.__socket.shutdown(socket.SHUT_RDWR)

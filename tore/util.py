@@ -188,15 +188,15 @@ import sys
 
 def get_exec_dir():
     """
-    获取调用脚本所在的目录
-    注意：必须从程序的主文件中直接调用该函数才能获得程序运行的目录
+    get the absolute dir of callee
+    Notice: must be invoked from __main__ to get the correct result
     """
     if hasattr(sys, 'frozen'):
-        # 使用cx_Freeze等工具打包了
-        # 返回打包后的可执行程序目录
+        # packed by cx_Freeze
+        # return absolute dir of packed executable
         return os.path.dirname(sys.executable)
     else:
-        # 返回调用方的Python源文件所在目录
+        # return where callee source is located
         frame = sys._getframe(0)
         this_filename = frame.f_code.co_filename
         while frame.f_code.co_filename == this_filename:

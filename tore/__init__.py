@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 """
-Tornado增强
-包含了实用的帮助类和函数
+TorE - Tornado Enhancement
 """
 import logging
 import os
@@ -16,12 +15,11 @@ __version__ = ''
 
 def start_server(**settings):
     """
-    一步到位启动一站式的服务器
+    Simplest way to start Tornado with just one statement
     """
     port = settings.get('port') or 80
     application = tore.web.Application(**settings)
     if settings.get('encryption'):
-        # 网站根目录，默认为当前目录
         root_dir = settings.get('root_dir')
         if not root_dir:
             root_dir = os.getcwd()
