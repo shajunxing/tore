@@ -10,6 +10,15 @@ TorE is an enhancement package of [Tornado](http://www.tornadoweb.org/) web fram
 
 ## Changelog
 
+### 2013.01.17
+
+* Support Tornado version 2.4.1 now.
+* Added a "callback" setting to start_server() method.
+* Added a thread lock to messaging exchange to prevent possible confiction.
+* Added "write_html_file()" method to tore.web.RequestHandler class.
+* In tore.web.JsonHandler class, rename "write_object" to "write_json_object", rename "write_text" to "write_json_text", added "write_plain_text" method.
+* Merged tore.web.JsonHandler into tore.web.RequestHandler
+
 ### 2012.10.28
 
 * Support Tornado version 2.4 now.
@@ -64,12 +73,12 @@ Since it is based on WebSocket protocol, only latest version of Chrome and Firef
 
 Notice tore.messaging.exchange.push(message, destination) can be used inside application to directly publish messages without going through TCP or UDP.
 
-### tore.web.JsonHandler
+### tore.web.JsonHandler (Deprecated and has been merged into tore.web.RequestHandler)
 
 A handler inherited from tornado.web.RequestHandler and optimized for Ajax and RESTful Web Service. Adds some new methods:
 
-1. write_object(self, obj): Output Python object to Json format. The "Content Type" will be set to "application/json; charset=UTF-8".
-2. write_text(self, txt): Directly output Json text. The "Content Type" will be set to "application/json; charset=UTF-8". Notice this method will not do encoding and gramma checking.
+1. write_json_object(self, obj): Output Python object to Json format. The "Content Type" will be set to "application/json; charset=UTF-8".
+2. write_json_text(self, txt): Directly output Json text. The "Content Type" will be set to "application/json; charset=UTF-8". Notice this method will not do encoding and gramma checking.
 3. get_params_as_dict(self): Get dictionary wrapped request params, including query strings followed by url(GET) and request body(POST).
 4. get_body_as_text(self): Get text formatted requese body. Default encoding is UTF-8.
 5. get_body_as_object(self): Convert Json string formatted request body to Python object. For example, Json string can be submitted by jQuery.ajax(), notice that "processData" must be set to "false".
@@ -123,11 +132,11 @@ A boolean value to to enable/disable HTTP compression. Default is disabled.
 
 #### certfile
 
-(New) SSL public key filename. Same as the param of tornado.httpserver.HTTPServer.
+(New) SSL public key filename. Same as the param of tornado.httpserver.HTTPServer. File path may be absolute or relative to root_dir.
 
 #### keyfile
 
-(New) SSL private key filename. Same as the param of tornado.httpserver.HTTPServer.
+(New) SSL private key filename. Same as the param of tornado.httpserver.HTTPServer. File path may be absolute or relative to root_dir.
 
 #### debug
 
@@ -141,9 +150,17 @@ A boolean value to to enable/disable HTTP compression. Default is disabled.
 
 (New) A function which format is "foo(username, password)". tore.web.authenticated decorator will get user name and password from HTTP basic authentication and try to call this function. If this function exists and the return value is False, An 401 error will be raised, or the user name will be set as "current_user". Default is None.
 
+#### unauthenticated_response_file
+
+(New) An html file which content will be sent back while 401 error occured. File path may be absolute or relative to root_dir. Defalut is None and the 401 response will be "Unauthenticated".
+
 #### authorization
 
 (New) A function which format is "foo(username, path)". tore.web.authorized decorator will call this function using current user name and request url. If this function exists and the return value is False, An 403 error will be raised. Default is None.
+
+#### unauthorized_response_file
+
+(New) An html file which content will be sent back while 403 error occured. File path may be absolute or relative to root_dir. Defalut is None and the 401 response will be "Unauthorized".
 
 #### messaging_tcp_port
 
@@ -152,3 +169,7 @@ A boolean value to to enable/disable HTTP compression. Default is disabled.
 #### messaging_udp_port
 
 (New) UDP port of messaging service, Which will be disabled if set to None. Default is None.
+
+#### callback
+
+(New) A callback function which format is "foo(port, messaging_tcp_port, messaging_udp_port)" and will be invoked after tornado ioloop started.

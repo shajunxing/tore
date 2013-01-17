@@ -4,7 +4,6 @@
 Example Server
 """
 __author__ = 'shajunxing'
-__version__ = ''
 
 import platform
 import threading
@@ -27,17 +26,19 @@ def authorize(username, path):
     return True
 
 
-class SystemInformationHandler(tore.web.JsonHandler):
+class SystemInformationHandler(tore.web.RequestHandler):
     """
     Ajax handler of getting some system information
     """
+
     @tore.web.authenticated
     def get(self, *args, **kwargs):
-        self.write_object({
+        self.write_json_object({
             'username': self.current_user,
             'platform': platform.platform(),
             'processor': platform.processor()
         })
+
 
 def timer():
     """
@@ -46,6 +47,13 @@ def timer():
     while True:
         time.sleep(1)
         tore.messaging.exchange.push(time.strftime('%Y-%m-%d %H:%M:%S'), '/time')
+
+
+def callback(port, messaging_tcp_port, messaging_udp_port):
+    """
+    Server started callback
+    """
+    print('Server started at port', port)
 
 if __name__ == '__main__':
     timer_thread = threading.Thread(target=timer)
@@ -59,5 +67,6 @@ if __name__ == '__main__':
         'authorization': authorize,
         'handlers': [
             ('^/system$', SystemInformationHandler),
-        ]
+        ],
+        'callback': callback
     })
